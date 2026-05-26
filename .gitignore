@@ -1,0 +1,14 @@
+node_modules
+.env
+.DS_Store
+
+backend/node_modules
+frontend/node_modules
+
+backend/uploads/music/*
+backend/uploads/covers/*
+backend/uploads/lyrics/*
+
+!backend/uploads/music/.gitkeep
+!backend/uploads/covers/.gitkeep
+!backend/uploads/lyrics/.gitkeep
