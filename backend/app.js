@@ -20,8 +20,12 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 const userRoutes = require('./routes/userRoutes');
+const songRoutes = require('./routes/songRoutes');
+const favoriteRoutes = require('./routes/favoriteRoutes');
 
 app.use('/api/users', userRoutes);
+app.use('/api/songs', songRoutes);
+app.use('/api/favorites', favoriteRoutes);
 
 // 测试接口
 app.get('/', (req, res) => {
