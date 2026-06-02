@@ -3,10 +3,10 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { api } from './api';
 
 const tabs = [
-  { key: 'songs', label: '资料库' },
-  { key: 'upload', label: '上传歌曲', auth: true },
-  { key: 'uploads', label: '我的上传', auth: true },
-  { key: 'favorites', label: '我的收藏', auth: true }
+  { key: 'songs', label: '资料库', icon: '⌘' },
+  { key: 'upload', label: '上传歌曲', icon: '＋', auth: true },
+  { key: 'uploads', label: '我的上传', icon: '↑', auth: true },
+  { key: 'favorites', label: '我的收藏', icon: '♡', auth: true }
 ];
 
 const categories = ['全部', '流行', '民谣', '摇滚', '电子', '其他'];
@@ -96,6 +96,10 @@ const canDeleteSong = (song) => {
 
   return user.value.role === 'admin' || isSongUploader(song);
 };
+
+const getFavoriteIcon = (song) => (favoriteMap[song._id] ? '♥' : '♡');
+
+const getFavoriteLabel = (song) => (favoriteMap[song._id] ? '取消收藏' : '收藏');
 
 const showMessage = (text) => {
   message.value = text;
@@ -423,13 +427,17 @@ onMounted(async () => {
           type="button"
           @click="switchTab(tab)"
         >
+          <span>{{ tab.icon }}</span>
           {{ tab.label }}
         </button>
       </nav>
 
       <div class="user-panel">
         <span v-if="isLoggedIn">{{ user.username }} · {{ user.role === 'admin' ? '管理员' : '用户' }}</span>
-        <button v-if="isLoggedIn" type="button" @click="logout">退出</button>
+        <button v-if="isLoggedIn" class="icon-button wide" type="button" title="退出登录" @click="logout">
+          <span>⎋</span>
+          退出
+        </button>
       </div>
     </header>
 
@@ -447,10 +455,10 @@ onMounted(async () => {
               </p>
               <div class="hero-actions">
                 <button v-if="featuredSong" type="button" :disabled="loading" @click="playSong(featuredSong)">
-                  播放精选
+                  ▶ 播放精选
                 </button>
                 <button class="secondary" type="button" @click="activeTab = isLoggedIn ? 'upload' : 'songs'">
-                  {{ isLoggedIn ? '上传歌曲' : '登录后上传' }}
+                  {{ isLoggedIn ? '＋ 上传歌曲' : '登录后上传' }}
                 </button>
               </div>
             </div>
@@ -490,7 +498,9 @@ onMounted(async () => {
               <input v-model.trim="filters.keyword" placeholder="搜索歌曲、歌手、专辑" />
               <input v-model.trim="filters.category" placeholder="分类" />
               <button type="submit" :disabled="loading">搜索</button>
-              <button class="secondary" type="button" :disabled="loading" @click="resetFilters">重置</button>
+              <button class="secondary icon-button" type="button" title="重置" :disabled="loading" @click="resetFilters">
+                ↺
+              </button>
             </form>
           </div>
 
@@ -532,20 +542,21 @@ onMounted(async () => {
                 </span>
               </div>
               <div class="song-actions">
-                <button type="button" :disabled="loading" @click="playSong(song)">
-                  {{ playingSongId === song._id ? '播放中' : '播放' }}
+                <button class="icon-button" type="button" :title="playingSongId === song._id ? '播放中' : '播放'" :disabled="loading" @click="playSong(song)">
+                  {{ playingSongId === song._id ? '●' : '▶' }}
                 </button>
-                <button type="button" :disabled="loading" @click="toggleFavorite(song)">
-                  {{ favoriteMap[song._id] ? '已收藏' : '收藏' }}
+                <button class="icon-button favorite" type="button" :title="getFavoriteLabel(song)" :disabled="loading" @click="toggleFavorite(song)">
+                  {{ getFavoriteIcon(song) }}
                 </button>
                 <button
                   v-if="canDeleteSong(song)"
-                  class="danger"
+                  class="icon-button danger"
                   type="button"
+                  title="删除"
                   :disabled="loading"
                   @click="deleteSong(song)"
                 >
-                  删除
+                  ×
                 </button>
               </div>
             </article>
@@ -588,7 +599,7 @@ onMounted(async () => {
               <span v-if="uploadForm.cover" class="file-name">{{ uploadForm.cover.name }}</span>
             </label>
             <button type="submit" :disabled="loading">
-              {{ loading ? '上传中...' : '提交上传' }}
+              {{ loading ? '上传中...' : '＋ 提交上传' }}
             </button>
           </form>
         </section>
@@ -618,12 +629,12 @@ onMounted(async () => {
                 <span>{{ song.category || '其他' }} · 播放 {{ song.playCount || 0 }} 次</span>
               </div>
               <div class="song-actions">
-                <button type="button" :disabled="loading" @click="playSong(song)">播放</button>
-                <button type="button" :disabled="loading" @click="toggleFavorite(song)">
-                  {{ favoriteMap[song._id] ? '已收藏' : '收藏' }}
+                <button class="icon-button" type="button" title="播放" :disabled="loading" @click="playSong(song)">▶</button>
+                <button class="icon-button favorite" type="button" :title="getFavoriteLabel(song)" :disabled="loading" @click="toggleFavorite(song)">
+                  {{ getFavoriteIcon(song) }}
                 </button>
-                <button class="danger" type="button" :disabled="loading" @click="deleteSong(song)">
-                  删除
+                <button class="icon-button danger" type="button" title="删除" :disabled="loading" @click="deleteSong(song)">
+                  ×
                 </button>
               </div>
             </article>
@@ -651,8 +662,8 @@ onMounted(async () => {
                 <span>{{ song.category || '其他' }} · 播放 {{ song.playCount || 0 }} 次</span>
               </div>
               <div class="song-actions">
-                <button type="button" :disabled="loading" @click="playSong(song)">播放</button>
-                <button type="button" :disabled="loading" @click="toggleFavorite(song)">取消收藏</button>
+                <button class="icon-button" type="button" title="播放" :disabled="loading" @click="playSong(song)">▶</button>
+                <button class="icon-button favorite" type="button" title="取消收藏" :disabled="loading" @click="toggleFavorite(song)">♥</button>
               </div>
             </article>
           </div>
@@ -667,10 +678,10 @@ onMounted(async () => {
           <p>登录后可以上传、收藏和管理自己的歌曲。</p>
           <div class="mode-switch">
             <button :class="{ active: mode === 'login' }" type="button" @click="mode = 'login'">
-              登录
+              ⎋ 登录
             </button>
             <button :class="{ active: mode === 'register' }" type="button" @click="mode = 'register'">
-              注册
+              ＋ 注册
             </button>
           </div>
 
@@ -697,7 +708,7 @@ onMounted(async () => {
             <span>上传 {{ uploadedSongs.length }}</span>
             <span>歌曲 {{ songs.length }}</span>
           </div>
-          <button type="button" @click="activeTab = 'upload'">上传歌曲</button>
+          <button type="button" @click="activeTab = 'upload'">＋ 上传歌曲</button>
         </template>
       </aside>
     </main>
@@ -706,7 +717,7 @@ onMounted(async () => {
       <section class="modal">
         <div class="modal-head">
           <h2>歌曲详情</h2>
-          <button class="secondary" type="button" @click="closeSongDetail">关闭</button>
+          <button class="secondary icon-button" type="button" title="关闭" @click="closeSongDetail">×</button>
         </div>
 
         <div class="detail-layout">
@@ -744,18 +755,19 @@ onMounted(async () => {
         </div>
 
         <div class="modal-actions">
-          <button type="button" :disabled="loading" @click="playSong(selectedSong)">播放</button>
-          <button type="button" :disabled="loading" @click="toggleFavorite(selectedSong)">
-            {{ favoriteMap[selectedSong._id] ? '取消收藏' : '收藏' }}
+          <button class="icon-button" type="button" title="播放" :disabled="loading" @click="playSong(selectedSong)">▶</button>
+          <button class="icon-button favorite" type="button" :title="getFavoriteLabel(selectedSong)" :disabled="loading" @click="toggleFavorite(selectedSong)">
+            {{ getFavoriteIcon(selectedSong) }}
           </button>
           <button
             v-if="canDeleteSong(selectedSong)"
-            class="danger"
+            class="icon-button danger"
             type="button"
+            title="删除"
             :disabled="loading"
             @click="deleteSong(selectedSong)"
           >
-            删除
+            ×
           </button>
         </div>
       </section>
@@ -770,9 +782,9 @@ onMounted(async () => {
         </div>
       </div>
       <div class="player-controls">
-        <button class="secondary" type="button" :disabled="!currentQueue.length" @click="playPrevious">上一首</button>
+        <button class="secondary icon-button transport" type="button" title="上一首" :disabled="!currentQueue.length" @click="playPrevious">⏮</button>
         <audio ref="audioRef" controls @ended="handleAudioEnded" />
-        <button class="secondary" type="button" :disabled="!currentQueue.length" @click="playNext">下一首</button>
+        <button class="secondary icon-button transport" type="button" title="下一首" :disabled="!currentQueue.length" @click="playNext">⏭</button>
       </div>
     </footer>
   </div>

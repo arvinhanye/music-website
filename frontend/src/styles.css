@@ -1,14 +1,15 @@
 :root {
-  --accent: #fa233b;
-  --accent-dark: #d70015;
-  --bg: #f5f5f7;
-  --panel: rgba(255, 255, 255, 0.86);
-  --panel-solid: #ffffff;
-  --line: rgba(60, 60, 67, 0.13);
-  --text: #1d1d1f;
-  --muted: #6e6e73;
-  --soft: #f2f2f7;
-  --shadow: 0 18px 50px rgba(0, 0, 0, 0.08);
+  --accent: #fa2d48;
+  --accent-soft: rgba(250, 45, 72, 0.18);
+  --bg: #09090b;
+  --panel: rgba(28, 28, 31, 0.86);
+  --panel-strong: rgba(38, 38, 42, 0.96);
+  --line: rgba(255, 255, 255, 0.1);
+  --text: #f5f5f7;
+  --muted: #a1a1aa;
+  --subtle: #71717a;
+  --soft: rgba(255, 255, 255, 0.08);
+  --shadow: 0 22px 70px rgba(0, 0, 0, 0.34);
 }
 
 * {
@@ -18,9 +19,9 @@
 body {
   margin: 0;
   background:
-    radial-gradient(circle at 18% 8%, rgba(250, 35, 59, 0.12), transparent 28%),
-    radial-gradient(circle at 92% 18%, rgba(255, 149, 0, 0.12), transparent 24%),
-    var(--bg);
+    radial-gradient(circle at 14% 4%, rgba(250, 45, 72, 0.28), transparent 30%),
+    radial-gradient(circle at 92% 16%, rgba(114, 92, 255, 0.22), transparent 28%),
+    linear-gradient(145deg, #09090b 0%, #111114 48%, #070708 100%);
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Arial, "Microsoft YaHei", sans-serif;
 }
@@ -37,62 +38,101 @@ button {
   color: #fff;
   cursor: pointer;
   font-weight: 700;
+  min-height: 40px;
   padding: 10px 14px;
   transition: background 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
 }
 
 button:hover:not(:disabled) {
-  background: var(--accent-dark);
-  box-shadow: 0 8px 20px rgba(250, 35, 59, 0.2);
+  background: #ff4160;
+  box-shadow: 0 12px 26px rgba(250, 45, 72, 0.24);
   transform: translateY(-1px);
 }
 
 button:disabled {
   cursor: not-allowed;
-  opacity: 0.55;
+  opacity: 0.5;
 }
 
 button.secondary {
-  background: rgba(118, 118, 128, 0.12);
+  background: rgba(255, 255, 255, 0.1);
   color: var(--text);
 }
 
 button.secondary:hover:not(:disabled) {
-  background: rgba(118, 118, 128, 0.2);
+  background: rgba(255, 255, 255, 0.16);
   box-shadow: none;
 }
 
 button.danger {
-  background: #ff3b30;
+  background: rgba(255, 69, 58, 0.18);
+  color: #ff8a80;
+}
+
+button.danger:hover:not(:disabled) {
+  background: rgba(255, 69, 58, 0.28);
+  box-shadow: none;
+}
+
+.icon-button {
+  align-items: center;
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 18px;
+  height: 40px;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0;
+  width: 40px;
+}
+
+.icon-button.wide {
+  border-radius: 8px;
+  gap: 8px;
+  justify-content: center;
+  width: auto;
+}
+
+.icon-button.favorite {
+  background: rgba(250, 45, 72, 0.16);
+  color: #ff6b82;
+}
+
+.icon-button.transport {
+  font-size: 19px;
 }
 
 input {
   width: 100%;
   border: 1px solid transparent;
   border-radius: 8px;
-  background: rgba(118, 118, 128, 0.12);
+  background: rgba(255, 255, 255, 0.08);
   color: var(--text);
   padding: 11px 13px;
   outline: none;
   transition: background 0.18s ease, border 0.18s ease;
 }
 
+input::placeholder {
+  color: var(--subtle);
+}
+
 input:focus {
-  background: #fff;
-  border-color: rgba(250, 35, 59, 0.45);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(250, 45, 72, 0.62);
 }
 
 .app-shell {
   min-height: 100vh;
-  padding-bottom: 96px;
+  padding-bottom: 104px;
 }
 
 .topbar {
   align-content: start;
-  background: rgba(246, 246, 248, 0.76);
-  backdrop-filter: blur(24px);
+  background: rgba(18, 18, 21, 0.78);
+  backdrop-filter: blur(26px);
   border-right: 1px solid var(--line);
-  bottom: 88px;
+  bottom: 96px;
   display: grid;
   gap: 24px;
   left: 0;
@@ -111,9 +151,9 @@ input:focus {
 
 .app-mark {
   align-items: center;
-  background: linear-gradient(135deg, #ff2d55, #ff9500);
+  background: linear-gradient(135deg, #fa2d48, #ff7a59);
   border-radius: 8px;
-  box-shadow: 0 10px 24px rgba(250, 35, 59, 0.22);
+  box-shadow: 0 12px 30px rgba(250, 45, 72, 0.28);
   color: #fff;
   display: flex;
   font-size: 24px;
@@ -158,17 +198,34 @@ input:focus {
 .nav-tabs button,
 .mode-switch button,
 .category-bar button {
+  align-items: center;
   background: transparent;
-  color: var(--text);
+  color: var(--muted);
+  display: flex;
+  gap: 10px;
   justify-content: flex-start;
   text-align: left;
+}
+
+.nav-tabs button span {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  display: inline-flex;
+  height: 28px;
+  justify-content: center;
+  width: 28px;
 }
 
 .nav-tabs button.active,
 .mode-switch button.active,
 .category-bar button.active {
-  background: rgba(250, 35, 59, 0.12);
-  color: var(--accent-dark);
+  background: var(--accent-soft);
+  color: #fff;
+}
+
+.nav-tabs button.active span {
+  background: var(--accent);
 }
 
 .user-panel {
@@ -199,7 +256,7 @@ input:focus {
 .section,
 .auth-card {
   background: var(--panel);
-  backdrop-filter: blur(20px);
+  backdrop-filter: blur(22px);
   border: 1px solid var(--line);
   border-radius: 8px;
   box-shadow: var(--shadow);
@@ -228,14 +285,14 @@ input:focus {
 }
 
 .narrow {
-  max-width: 660px;
+  max-width: 680px;
 }
 
 .notice {
-  background: rgba(250, 35, 59, 0.09);
-  border: 1px solid rgba(250, 35, 59, 0.18);
+  background: rgba(250, 45, 72, 0.14);
+  border: 1px solid rgba(250, 45, 72, 0.24);
   border-radius: 8px;
-  color: var(--accent-dark);
+  color: #ff9aaa;
   margin-bottom: 16px;
   padding: 12px 14px;
 }
@@ -243,8 +300,9 @@ input:focus {
 .library-hero {
   align-items: center;
   background:
-    linear-gradient(135deg, rgba(250, 35, 59, 0.95), rgba(255, 149, 0, 0.86)),
-    var(--accent);
+    linear-gradient(135deg, rgba(250, 45, 72, 0.9), rgba(106, 74, 255, 0.78)),
+    #17171a;
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 8px;
   color: #fff;
   display: grid;
@@ -273,7 +331,7 @@ input:focus {
 }
 
 .eyebrow {
-  color: rgba(255, 255, 255, 0.82);
+  color: rgba(255, 255, 255, 0.78);
   display: block;
   font-size: 13px;
   font-weight: 800;
@@ -288,24 +346,24 @@ input:focus {
 }
 
 .hero-copy p {
-  color: rgba(255, 255, 255, 0.82);
+  color: rgba(255, 255, 255, 0.8);
   margin: 12px 0 20px;
 }
 
 .hero-actions button {
   background: #fff;
-  color: var(--accent-dark);
+  color: #111114;
 }
 
 .hero-actions button.secondary {
-  background: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.16);
   color: #fff;
 }
 
 .hero-cover {
   aspect-ratio: 1;
   border-radius: 8px;
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.26);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.34);
   object-fit: cover;
   position: relative;
   width: 190px;
@@ -320,7 +378,7 @@ input:focus {
 }
 
 .stats div {
-  background: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.06);
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 15px;
@@ -356,7 +414,7 @@ input:focus {
   aspect-ratio: 1;
   background: var(--soft);
   border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
   display: block;
   margin-bottom: 9px;
   object-fit: cover;
@@ -376,8 +434,19 @@ input:focus {
   margin-bottom: 18px;
 }
 
+.category-bar button {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  min-height: 34px;
+  padding: 8px 13px;
+}
+
+.category-bar button.active {
+  border-color: rgba(250, 45, 72, 0.34);
+}
+
 .song-list {
-  background: rgba(255, 255, 255, 0.58);
+  background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--line);
   border-radius: 8px;
   overflow: hidden;
@@ -397,7 +466,7 @@ input:focus {
 }
 
 .song-item.playing {
-  background: rgba(250, 35, 59, 0.08);
+  background: rgba(250, 45, 72, 0.12);
 }
 
 .cover {
@@ -427,7 +496,7 @@ input:focus {
 .song-title:hover:not(:disabled) {
   background: transparent;
   box-shadow: none;
-  color: var(--accent-dark);
+  color: #ff7b91;
   transform: none;
 }
 
@@ -471,7 +540,7 @@ input:focus {
 }
 
 .side-stats span {
-  background: rgba(118, 118, 128, 0.12);
+  background: rgba(255, 255, 255, 0.08);
   border-radius: 999px;
   padding: 6px 10px;
 }
@@ -484,8 +553,8 @@ input:focus {
 
 .player {
   align-items: center;
-  background: rgba(246, 246, 248, 0.82);
-  backdrop-filter: blur(24px);
+  background: rgba(15, 15, 18, 0.88);
+  backdrop-filter: blur(26px);
   border-top: 1px solid var(--line);
   bottom: 0;
   display: grid;
@@ -493,7 +562,7 @@ input:focus {
   grid-template-columns: minmax(220px, 320px) minmax(0, 860px);
   justify-content: center;
   left: 248px;
-  min-height: 88px;
+  min-height: 96px;
   padding: 12px 24px;
   position: fixed;
   right: 0;
@@ -502,7 +571,9 @@ input:focus {
 
 .player audio {
   display: block;
+  filter: invert(1) hue-rotate(180deg);
   max-width: 680px;
+  opacity: 0.86;
   width: 100%;
 }
 
@@ -540,7 +611,7 @@ input:focus {
 
 .modal-backdrop {
   align-items: center;
-  background: rgba(29, 29, 31, 0.44);
+  background: rgba(0, 0, 0, 0.62);
   bottom: 0;
   display: flex;
   justify-content: center;
@@ -553,10 +624,10 @@ input:focus {
 }
 
 .modal {
-  background: var(--panel-solid);
+  background: var(--panel-strong);
   border: 1px solid var(--line);
   border-radius: 8px;
-  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.24);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.44);
   max-height: min(760px, calc(100vh - 48px));
   max-width: 760px;
   overflow: auto;
@@ -634,7 +705,7 @@ input:focus {
 
 @media (max-width: 760px) {
   .app-shell {
-    padding-bottom: 150px;
+    padding-bottom: 164px;
   }
 
   .topbar {
@@ -680,6 +751,10 @@ input:focus {
   .hero-actions {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .song-actions {
+    flex-direction: row;
   }
 
   .player {
