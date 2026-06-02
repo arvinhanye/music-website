@@ -3,8 +3,9 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { api } from './api';
 
 const tabs = [
-  { key: 'songs', label: '首页' },
+  { key: 'songs', label: '资料库' },
   { key: 'upload', label: '上传歌曲', auth: true },
+  { key: 'uploads', label: '我的上传', auth: true },
   { key: 'favorites', label: '我的收藏', auth: true }
 ];
 
@@ -47,9 +48,28 @@ const uploadForm = reactive({
 
 const isLoggedIn = computed(() => Boolean(token.value && user.value));
 
+const getUploaderId = (song) => {
+  if (!song.uploaderId) {
+    return '';
+  }
+
+  return typeof song.uploaderId === 'string' ? song.uploaderId : song.uploaderId._id;
+};
+
+const isSongUploader = (song) =>
+  isLoggedIn.value && getUploaderId(song) === user.value.id;
+
 const favoriteSongs = computed(() =>
   favorites.value.map((favorite) => favorite.songId).filter(Boolean)
 );
+
+const uploadedSongs = computed(() =>
+  songs.value.filter((song) => isSongUploader(song))
+);
+
+const featuredSong = computed(() => currentSong.value || songs.value[0] || null);
+
+const previewSongs = computed(() => songs.value.slice(0, 5));
 
 const totalPlayCount = computed(() =>
   songs.value.reduce((sum, song) => sum + (Number(song.playCount) || 0), 0)
@@ -74,8 +94,7 @@ const canDeleteSong = (song) => {
     return false;
   }
 
-  const uploaderId = typeof song.uploaderId === 'string' ? song.uploaderId : song.uploaderId._id;
-  return user.value.role === 'admin' || uploaderId === user.value.id;
+  return user.value.role === 'admin' || isSongUploader(song);
 };
 
 const showMessage = (text) => {
@@ -370,6 +389,10 @@ const switchTab = async (tab) => {
   if (tab.key === 'favorites') {
     await loadFavorites();
   }
+
+  if (tab.key === 'uploads') {
+    await loadSongs();
+  }
 };
 
 onMounted(async () => {
@@ -384,9 +407,12 @@ onMounted(async () => {
 <template>
   <div class="app-shell">
     <header class="topbar">
-      <div>
-        <h1>音乐网站</h1>
-        <p>课程实验 MVP</p>
+      <div class="brand">
+        <div class="app-mark">♪</div>
+        <div>
+          <h1>Music Lab</h1>
+          <p>课程实验资料库</p>
+        </div>
       </div>
 
       <nav class="nav-tabs">
@@ -412,6 +438,29 @@ onMounted(async () => {
         <div v-if="message" class="notice">{{ message }}</div>
 
         <section v-if="activeTab === 'songs'" class="section">
+          <div class="library-hero">
+            <div class="hero-copy">
+              <span class="eyebrow">资料库精选</span>
+              <h2>{{ featuredSong ? featuredSong.title : '开始建立你的音乐库' }}</h2>
+              <p>
+                {{ featuredSong ? `${featuredSong.singer} · ${featuredSong.album || '未知专辑'}` : '上传第一首歌曲后，这里会展示你的最新音乐。' }}
+              </p>
+              <div class="hero-actions">
+                <button v-if="featuredSong" type="button" :disabled="loading" @click="playSong(featuredSong)">
+                  播放精选
+                </button>
+                <button class="secondary" type="button" @click="activeTab = isLoggedIn ? 'upload' : 'songs'">
+                  {{ isLoggedIn ? '上传歌曲' : '登录后上传' }}
+                </button>
+              </div>
+            </div>
+            <img
+              class="hero-cover"
+              :src="featuredSong && featuredSong.coverUrl ? featuredSong.coverUrl : '/default-cover.svg'"
+              alt=""
+            />
+          </div>
+
           <div class="stats">
             <div>
               <strong>{{ songs.length }}</strong>
@@ -425,6 +474,14 @@ onMounted(async () => {
               <strong>{{ favoriteSongs.length }}</strong>
               <span>收藏</span>
             </div>
+          </div>
+
+          <div v-if="previewSongs.length" class="preview-row">
+            <article v-for="song in previewSongs" :key="song._id" class="preview-card" @click="openSongDetail(song)">
+              <img :src="song.coverUrl || '/default-cover.svg'" alt="" />
+              <strong>{{ song.title }}</strong>
+              <span>{{ song.singer }}</span>
+            </article>
           </div>
 
           <div class="section-head">
@@ -536,8 +593,52 @@ onMounted(async () => {
           </form>
         </section>
 
+        <section v-if="activeTab === 'uploads'" class="section">
+          <div class="section-head">
+            <div>
+              <h2>我的上传</h2>
+              <p class="section-subtitle">共 {{ uploadedSongs.length }} 首歌曲</p>
+            </div>
+            <button type="button" @click="activeTab = 'upload'">继续上传</button>
+          </div>
+
+          <div v-if="uploadedSongs.length" class="song-list">
+            <article
+              v-for="song in uploadedSongs"
+              :key="song._id"
+              class="song-item"
+              :class="{ playing: playingSongId === song._id }"
+            >
+              <img class="cover" :src="song.coverUrl || '/default-cover.svg'" alt="" />
+              <div class="song-info">
+                <button class="song-title" type="button" @click="openSongDetail(song)">
+                  {{ song.title }}
+                </button>
+                <p>{{ song.singer }} · {{ song.album || '未知专辑' }}</p>
+                <span>{{ song.category || '其他' }} · 播放 {{ song.playCount || 0 }} 次</span>
+              </div>
+              <div class="song-actions">
+                <button type="button" :disabled="loading" @click="playSong(song)">播放</button>
+                <button type="button" :disabled="loading" @click="toggleFavorite(song)">
+                  {{ favoriteMap[song._id] ? '已收藏' : '收藏' }}
+                </button>
+                <button class="danger" type="button" :disabled="loading" @click="deleteSong(song)">
+                  删除
+                </button>
+              </div>
+            </article>
+          </div>
+
+          <div v-else class="empty">还没有上传歌曲</div>
+        </section>
+
         <section v-if="activeTab === 'favorites'" class="section">
-          <h2>我的收藏</h2>
+          <div class="section-head">
+            <div>
+              <h2>我的收藏</h2>
+              <p class="section-subtitle">保存在账号里的喜欢歌曲</p>
+            </div>
+          </div>
 
           <div v-if="favoriteSongs.length" class="song-list">
             <article v-for="song in favoriteSongs" :key="song._id" class="song-item">
@@ -562,6 +663,8 @@ onMounted(async () => {
 
       <aside class="auth-card">
         <template v-if="!isLoggedIn">
+          <h2>账户</h2>
+          <p>登录后可以上传、收藏和管理自己的歌曲。</p>
           <div class="mode-switch">
             <button :class="{ active: mode === 'login' }" type="button" @click="mode = 'login'">
               登录
@@ -591,6 +694,7 @@ onMounted(async () => {
           <p>{{ user.role === 'admin' ? '管理员账号' : '普通用户账号' }}</p>
           <div class="side-stats">
             <span>收藏 {{ favoriteSongs.length }}</span>
+            <span>上传 {{ uploadedSongs.length }}</span>
             <span>歌曲 {{ songs.length }}</span>
           </div>
           <button type="button" @click="activeTab = 'upload'">上传歌曲</button>
@@ -659,8 +763,11 @@ onMounted(async () => {
 
     <footer class="player">
       <div class="now-playing">
-        <strong>{{ currentSong ? currentSong.title : '未播放歌曲' }}</strong>
-        <span>{{ currentSong ? currentSong.singer : '请选择一首歌曲' }}</span>
+        <img :src="currentSong && currentSong.coverUrl ? currentSong.coverUrl : '/default-cover.svg'" alt="" />
+        <div>
+          <strong>{{ currentSong ? currentSong.title : '未播放歌曲' }}</strong>
+          <span>{{ currentSong ? currentSong.singer : '请选择一首歌曲' }}</span>
+        </div>
       </div>
       <div class="player-controls">
         <button class="secondary" type="button" :disabled="!currentQueue.length" @click="playPrevious">上一首</button>
