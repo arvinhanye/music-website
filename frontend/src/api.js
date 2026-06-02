@@ -1,6 +1,19 @@
-const API_BASE = '';
+const DIRECT_API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
 const getToken = () => localStorage.getItem('music_token') || '';
+
+const getApiBases = () => {
+  const bases = [''];
+
+  if (
+    typeof window !== 'undefined' &&
+    window.location.origin !== DIRECT_API_BASE
+  ) {
+    bases.push(DIRECT_API_BASE);
+  }
+
+  return bases;
+};
 
 const request = async (url, options = {}) => {
   const headers = options.headers ? { ...options.headers } : {};
@@ -12,13 +25,20 @@ const request = async (url, options = {}) => {
 
   let response;
 
-  try {
-    response = await fetch(`${API_BASE}${url}`, {
-      ...options,
-      headers
-    });
-  } catch (error) {
-    throw new Error('无法连接后端服务，请确认后端已启动');
+  for (const base of getApiBases()) {
+    try {
+      response = await fetch(`${base}${url}`, {
+        ...options,
+        headers
+      });
+      break;
+    } catch (error) {
+      // 继续尝试下一个后端地址
+    }
+  }
+
+  if (!response) {
+    throw new Error(`无法连接后端服务，请确认后端已启动：${DIRECT_API_BASE}`);
   }
 
   const data = await response.json().catch(() => ({}));
