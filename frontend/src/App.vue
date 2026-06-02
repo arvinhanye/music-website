@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
 import { api } from './api';
 
 const tabs = [
@@ -22,6 +22,7 @@ const favorites = ref([]);
 const favoriteMap = reactive({});
 const playingSongId = ref('');
 const selectedSong = ref(null);
+const coverPreviewUrl = ref('');
 const audioRef = ref(null);
 const musicInputRef = ref(null);
 const coverInputRef = ref(null);
@@ -92,6 +93,18 @@ const currentQueue = computed(() =>
 const currentSongIndex = computed(() =>
   currentQueue.value.findIndex((song) => song._id === playingSongId.value)
 );
+
+const uploadReady = computed(() =>
+  Boolean(uploadForm.title && uploadForm.singer && uploadForm.music)
+);
+
+const uploadPreviewTitle = computed(() => uploadForm.title || '新歌曲标题');
+
+const uploadPreviewSinger = computed(() => uploadForm.singer || '待填写歌手');
+
+const uploadPreviewAlbum = computed(() => uploadForm.album || '未命名专辑');
+
+const uploadPreviewCategory = computed(() => uploadForm.category || '其他');
 
 const canDeleteSong = (song) => {
   if (!isLoggedIn.value || !song.uploaderId) {
@@ -334,6 +347,40 @@ const handleMusicFile = (event) => {
 
 const handleCoverFile = (event) => {
   uploadForm.cover = event.target.files[0] || null;
+
+  if (coverPreviewUrl.value) {
+    URL.revokeObjectURL(coverPreviewUrl.value);
+    coverPreviewUrl.value = '';
+  }
+
+  if (uploadForm.cover) {
+    coverPreviewUrl.value = URL.createObjectURL(uploadForm.cover);
+  }
+};
+
+const clearUploadForm = () => {
+  Object.assign(uploadForm, {
+    title: '',
+    singer: '',
+    album: '',
+    category: '',
+    duration: '',
+    music: null,
+    cover: null
+  });
+
+  if (coverPreviewUrl.value) {
+    URL.revokeObjectURL(coverPreviewUrl.value);
+    coverPreviewUrl.value = '';
+  }
+
+  if (musicInputRef.value) {
+    musicInputRef.value.value = '';
+  }
+
+  if (coverInputRef.value) {
+    coverInputRef.value.value = '';
+  }
 };
 
 const submitUpload = async () => {
@@ -377,6 +424,11 @@ const submitUpload = async () => {
       coverInputRef.value.value = '';
     }
 
+    if (coverPreviewUrl.value) {
+      URL.revokeObjectURL(coverPreviewUrl.value);
+      coverPreviewUrl.value = '';
+    }
+
     activeTab.value = 'songs';
     await loadSongs();
   } catch (error) {
@@ -413,6 +465,12 @@ onMounted(async () => {
 
   if (isLoggedIn.value) {
     await loadFavorites();
+  }
+});
+
+onUnmounted(() => {
+  if (coverPreviewUrl.value) {
+    URL.revokeObjectURL(coverPreviewUrl.value);
   }
 });
 </script>
@@ -570,42 +628,111 @@ onMounted(async () => {
           <div v-else class="empty">暂无歌曲</div>
         </section>
 
-        <section v-if="activeTab === 'upload'" class="section narrow">
-          <h2>上传歌曲</h2>
-          <form class="form" @submit.prevent="submitUpload">
-            <label>
-              歌曲名称
-              <input v-model.trim="uploadForm.title" />
-            </label>
-            <label>
-              歌手
-              <input v-model.trim="uploadForm.singer" />
-            </label>
-            <label>
-              专辑
-              <input v-model.trim="uploadForm.album" />
-            </label>
-            <label>
-              分类
-              <input v-model.trim="uploadForm.category" />
-            </label>
-            <label>
-              时长（秒）
-              <input v-model.trim="uploadForm.duration" type="number" min="0" />
-            </label>
-            <label>
-              音乐文件
-              <input ref="musicInputRef" accept="audio/*" type="file" @change="handleMusicFile" />
-              <span v-if="uploadForm.music" class="file-name">{{ uploadForm.music.name }}</span>
-            </label>
-            <label>
-              封面图片
-              <input ref="coverInputRef" accept="image/*" type="file" @change="handleCoverFile" />
-              <span v-if="uploadForm.cover" class="file-name">{{ uploadForm.cover.name }}</span>
-            </label>
-            <button type="submit" :disabled="loading">
-              {{ loading ? '上传中...' : '＋ 提交上传' }}
-            </button>
+        <section v-if="activeTab === 'upload'" class="section upload-page">
+          <div class="upload-hero">
+            <div>
+              <span class="eyebrow">上传工作台</span>
+              <h2>发布一首新歌曲</h2>
+              <p>填写歌曲信息，选择音频和封面。MongoDB 只保存文件路径，音频文件会放在 uploads 目录。</p>
+            </div>
+            <div class="upload-readiness" :class="{ ready: uploadReady }">
+              <strong>{{ uploadReady ? '准备就绪' : '待补全' }}</strong>
+              <span>{{ uploadReady ? '可以提交上传' : '需要歌曲名、歌手和音乐文件' }}</span>
+            </div>
+          </div>
+
+          <form class="upload-workbench" @submit.prevent="submitUpload">
+            <div class="upload-fields">
+              <div class="field-grid">
+                <label>
+                  歌曲名称
+                  <input v-model.trim="uploadForm.title" placeholder="例如 Neon Morning" />
+                </label>
+                <label>
+                  歌手
+                  <input v-model.trim="uploadForm.singer" placeholder="例如 Demo Studio" />
+                </label>
+                <label>
+                  专辑
+                  <input v-model.trim="uploadForm.album" placeholder="例如 Dark Library" />
+                </label>
+                <label>
+                  时长（秒）
+                  <input v-model.trim="uploadForm.duration" type="number" min="0" placeholder="180" />
+                </label>
+              </div>
+
+              <label>
+                分类
+                <input v-model.trim="uploadForm.category" placeholder="输入或选择分类" />
+              </label>
+
+              <div class="category-bar upload-categories">
+                <button
+                  v-for="category in categories.slice(1)"
+                  :key="category"
+                  type="button"
+                  :class="{ active: uploadForm.category === category }"
+                  @click="uploadForm.category = category"
+                >
+                  {{ category }}
+                </button>
+              </div>
+
+              <div class="upload-files">
+                <label class="file-drop">
+                  <span class="file-icon">♫</span>
+                  <strong>音乐文件</strong>
+                  <small>{{ uploadForm.music ? uploadForm.music.name : '选择音频文件' }}</small>
+                  <input ref="musicInputRef" accept="audio/*" type="file" @change="handleMusicFile" />
+                </label>
+                <label class="file-drop">
+                  <span class="file-icon">▧</span>
+                  <strong>封面图片</strong>
+                  <small>{{ uploadForm.cover ? uploadForm.cover.name : '选择封面图片，可选' }}</small>
+                  <input ref="coverInputRef" accept="image/*" type="file" @change="handleCoverFile" />
+                </label>
+              </div>
+
+              <div class="upload-actions">
+                <button type="submit" :disabled="loading || !uploadReady">
+                  {{ loading ? '上传中...' : '＋ 提交上传' }}
+                </button>
+                <button class="secondary" type="button" :disabled="loading" @click="clearUploadForm">
+                  清空
+                </button>
+              </div>
+            </div>
+
+            <aside class="upload-preview">
+              <div class="preview-cover large">
+                <img v-if="coverPreviewUrl" :src="coverPreviewUrl" alt="" />
+                <span v-else>♪</span>
+              </div>
+              <div class="preview-meta">
+                <h3>{{ uploadPreviewTitle }}</h3>
+                <p>{{ uploadPreviewSinger }} · {{ uploadPreviewAlbum }}</p>
+                <span>{{ uploadPreviewCategory }}</span>
+              </div>
+              <div class="upload-checklist">
+                <div :class="{ done: uploadForm.title }">
+                  <span>{{ uploadForm.title ? '✓' : '○' }}</span>
+                  歌曲名称
+                </div>
+                <div :class="{ done: uploadForm.singer }">
+                  <span>{{ uploadForm.singer ? '✓' : '○' }}</span>
+                  歌手
+                </div>
+                <div :class="{ done: uploadForm.music }">
+                  <span>{{ uploadForm.music ? '✓' : '○' }}</span>
+                  音乐文件
+                </div>
+                <div :class="{ done: uploadForm.cover }">
+                  <span>{{ uploadForm.cover ? '✓' : '○' }}</span>
+                  封面图片
+                </div>
+              </div>
+            </aside>
           </form>
         </section>
 

@@ -296,10 +296,6 @@ input:focus {
   width: 34px;
 }
 
-.narrow {
-  max-width: 680px;
-}
-
 .notice {
   background: rgba(250, 45, 72, 0.14);
   border: 1px solid rgba(250, 45, 72, 0.24);
@@ -541,6 +537,214 @@ input:focus {
   font-size: 13px;
   font-weight: 400;
   overflow-wrap: anywhere;
+}
+
+.upload-page {
+  overflow: hidden;
+}
+
+.upload-hero {
+  align-items: center;
+  background:
+    linear-gradient(135deg, rgba(250, 45, 72, 0.22), rgba(106, 74, 255, 0.2)),
+    rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) 180px;
+  margin-bottom: 18px;
+  padding: 22px;
+}
+
+.upload-hero h2 {
+  font-size: clamp(28px, 4vw, 46px);
+  line-height: 1.05;
+  margin: 0;
+}
+
+.upload-hero p {
+  color: var(--muted);
+  margin: 10px 0 0;
+  max-width: 680px;
+}
+
+.upload-readiness {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.upload-readiness.ready {
+  background: rgba(52, 199, 89, 0.14);
+  border-color: rgba(52, 199, 89, 0.3);
+}
+
+.upload-readiness strong,
+.upload-readiness span {
+  display: block;
+}
+
+.upload-readiness span {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 6px;
+}
+
+.upload-workbench {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) 320px;
+}
+
+.upload-fields {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+}
+
+.field-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.upload-fields label {
+  color: var(--text);
+  display: grid;
+  font-weight: 800;
+  gap: 7px;
+}
+
+.upload-categories {
+  margin-bottom: 0;
+}
+
+.upload-files {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.file-drop {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  cursor: pointer;
+  display: grid;
+  gap: 8px;
+  min-height: 150px;
+  padding: 18px;
+  position: relative;
+  text-align: center;
+}
+
+.file-drop:hover {
+  border-color: rgba(250, 45, 72, 0.55);
+  background: rgba(250, 45, 72, 0.08);
+}
+
+.file-drop input {
+  inset: 0;
+  opacity: 0;
+  position: absolute;
+}
+
+.file-icon {
+  align-items: center;
+  background: var(--accent-soft);
+  border-radius: 999px;
+  color: #ff8fa0;
+  display: flex;
+  font-size: 24px;
+  height: 52px;
+  justify-content: center;
+  margin: 0 auto;
+  width: 52px;
+}
+
+.file-drop small {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.upload-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.upload-preview {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+}
+
+.preview-cover.large {
+  align-items: center;
+  aspect-ratio: 1;
+  background:
+    linear-gradient(135deg, rgba(250, 45, 72, 0.42), rgba(106, 74, 255, 0.34)),
+    rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  display: flex;
+  font-size: 64px;
+  justify-content: center;
+  overflow: hidden;
+  width: 100%;
+}
+
+.preview-cover.large img {
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+.preview-meta h3 {
+  font-size: 24px;
+  margin: 0 0 6px;
+  overflow-wrap: anywhere;
+}
+
+.preview-meta p,
+.preview-meta span {
+  color: var(--muted);
+  display: block;
+  margin: 0;
+}
+
+.preview-meta span {
+  font-size: 13px;
+  margin-top: 6px;
+}
+
+.upload-checklist {
+  display: grid;
+  gap: 8px;
+}
+
+.upload-checklist div {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  gap: 8px;
+}
+
+.upload-checklist div.done {
+  color: var(--text);
+}
+
+.upload-checklist span {
+  color: #34c759;
+  width: 18px;
 }
 
 .empty {
@@ -788,6 +992,10 @@ input:focus {
   }
 
   .library-hero,
+  .upload-hero,
+  .upload-workbench,
+  .field-grid,
+  .upload-files,
   .section-head,
   .song-item,
   .stats,
