@@ -132,7 +132,7 @@ input:focus {
   background: rgba(18, 18, 21, 0.78);
   backdrop-filter: blur(26px);
   border-right: 1px solid var(--line);
-  bottom: 96px;
+  bottom: 0;
   display: grid;
   gap: 24px;
   left: 0;
@@ -170,7 +170,6 @@ input:focus {
 }
 
 .topbar p,
-.auth-card p,
 .section-subtitle {
   color: var(--muted);
   margin: 0;
@@ -178,7 +177,6 @@ input:focus {
 
 .nav-tabs,
 .mode-switch,
-.user-panel,
 .song-actions,
 .filters,
 .category-bar,
@@ -228,45 +226,28 @@ input:focus {
   background: var(--accent);
 }
 
-.user-panel {
-  align-items: stretch;
-  flex-direction: column;
-}
-
-.user-panel span {
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 700;
-}
-
 .main-grid {
   display: grid;
   gap: 24px;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: minmax(0, 1fr);
   margin-left: 248px;
-  max-width: 1380px;
-  padding: 28px 28px 0;
+  max-width: 1480px;
+  padding: 28px 88px 0 28px;
 }
 
 .content,
-.auth-card {
+.account-page {
   min-width: 0;
 }
 
 .section,
-.auth-card {
+.account-page {
   background: var(--panel);
   backdrop-filter: blur(22px);
   border: 1px solid var(--line);
   border-radius: 8px;
   box-shadow: var(--shadow);
   padding: 22px;
-}
-
-.auth-card {
-  align-self: start;
-  position: sticky;
-  top: 28px;
 }
 
 .section-head {
@@ -278,10 +259,41 @@ input:focus {
 }
 
 .section h2,
-.auth-card h2 {
+.account-page h2 {
   font-size: 22px;
   letter-spacing: 0;
   margin: 0;
+}
+
+.account-trigger {
+  align-items: center;
+  background: rgba(28, 28, 31, 0.76);
+  backdrop-filter: blur(22px);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.28);
+  color: var(--text);
+  display: flex;
+  height: 48px;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0;
+  position: fixed;
+  right: 26px;
+  top: 24px;
+  width: 48px;
+  z-index: 18;
+}
+
+.account-trigger span {
+  align-items: center;
+  background: linear-gradient(135deg, rgba(250, 45, 72, 0.92), rgba(106, 74, 255, 0.92));
+  border-radius: 999px;
+  display: flex;
+  font-weight: 900;
+  height: 34px;
+  justify-content: center;
+  width: 34px;
 }
 
 .narrow {
@@ -391,7 +403,6 @@ input:focus {
 }
 
 .stats span,
-.side-stats span,
 .now-playing span,
 .preview-card span {
   color: var(--muted);
@@ -530,19 +541,6 @@ input:focus {
   font-size: 13px;
   font-weight: 400;
   overflow-wrap: anywhere;
-}
-
-.side-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 14px 0;
-}
-
-.side-stats span {
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 999px;
-  padding: 6px 10px;
 }
 
 .empty {
@@ -693,13 +691,76 @@ input:focus {
   margin-top: 20px;
 }
 
+.account-page {
+  max-width: 860px;
+}
+
+.account-form {
+  max-width: 420px;
+}
+
+.account-summary {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+  margin: 18px 0;
+}
+
+.account-avatar {
+  align-items: center;
+  background: linear-gradient(135deg, #fa2d48, #6a4aff);
+  border-radius: 8px;
+  display: flex;
+  font-size: 28px;
+  font-weight: 900;
+  height: 72px;
+  justify-content: center;
+  width: 72px;
+}
+
+.account-summary h3 {
+  font-size: 28px;
+  margin: 0 0 4px;
+}
+
+.account-summary p {
+  color: var(--muted);
+  margin: 0;
+}
+
+.account-stats {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 18px 0;
+}
+
+.account-stats div {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.account-stats strong {
+  display: block;
+  font-size: 26px;
+}
+
+.account-stats span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 @media (max-width: 1080px) {
   .main-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .auth-card {
-    position: static;
+    padding-right: 28px;
   }
 }
 
@@ -716,6 +777,11 @@ input:focus {
     width: auto;
   }
 
+  .account-trigger {
+    right: 16px;
+    top: 16px;
+  }
+
   .main-grid {
     margin-left: 0;
     padding: 16px;
@@ -725,6 +791,7 @@ input:focus {
   .section-head,
   .song-item,
   .stats,
+  .account-stats,
   .detail-layout,
   .detail-info dl div,
   .player {

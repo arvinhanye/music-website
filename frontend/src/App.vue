@@ -48,6 +48,10 @@ const uploadForm = reactive({
 
 const isLoggedIn = computed(() => Boolean(token.value && user.value));
 
+const accountInitial = computed(() =>
+  user.value && user.value.username ? user.value.username.slice(0, 1).toUpperCase() : '未'
+);
+
 const getUploaderId = (song) => {
   if (!song.uploaderId) {
     return '';
@@ -385,6 +389,7 @@ const submitUpload = async () => {
 const switchTab = async (tab) => {
   if (tab.auth && !isLoggedIn.value) {
     showMessage('请先登录');
+    activeTab.value = 'account';
     return;
   }
 
@@ -397,6 +402,10 @@ const switchTab = async (tab) => {
   if (tab.key === 'uploads') {
     await loadSongs();
   }
+};
+
+const openAccount = () => {
+  activeTab.value = 'account';
 };
 
 onMounted(async () => {
@@ -431,15 +440,11 @@ onMounted(async () => {
           {{ tab.label }}
         </button>
       </nav>
-
-      <div class="user-panel">
-        <span v-if="isLoggedIn">{{ user.username }} · {{ user.role === 'admin' ? '管理员' : '用户' }}</span>
-        <button v-if="isLoggedIn" class="icon-button wide" type="button" title="退出登录" @click="logout">
-          <span>⎋</span>
-          退出
-        </button>
-      </div>
     </header>
+
+    <button class="account-trigger" type="button" title="账户" @click="openAccount">
+      <span>{{ isLoggedIn ? accountInitial : '⌾' }}</span>
+    </button>
 
     <main class="main-grid">
       <section class="content">
@@ -457,7 +462,7 @@ onMounted(async () => {
                 <button v-if="featuredSong" type="button" :disabled="loading" @click="playSong(featuredSong)">
                   ▶ 播放精选
                 </button>
-                <button class="secondary" type="button" @click="activeTab = isLoggedIn ? 'upload' : 'songs'">
+                <button class="secondary" type="button" @click="activeTab = isLoggedIn ? 'upload' : 'account'">
                   {{ isLoggedIn ? '＋ 上传歌曲' : '登录后上传' }}
                 </button>
               </div>
@@ -670,47 +675,72 @@ onMounted(async () => {
 
           <div v-else class="empty">暂无收藏</div>
         </section>
+
+        <section v-if="activeTab === 'account'" class="section account-page">
+          <div class="section-head">
+            <div>
+              <h2>账户</h2>
+              <p class="section-subtitle">登录后可以上传、收藏和管理自己的歌曲</p>
+            </div>
+          </div>
+
+          <template v-if="!isLoggedIn">
+            <div class="mode-switch">
+              <button :class="{ active: mode === 'login' }" type="button" @click="mode = 'login'">
+                ⎋ 登录
+              </button>
+              <button :class="{ active: mode === 'register' }" type="button" @click="mode = 'register'">
+                ＋ 注册
+              </button>
+            </div>
+
+            <form class="form account-form" @submit.prevent="submitAuth">
+              <label>
+                用户名
+                <input v-model.trim="authForm.username" autocomplete="username" />
+              </label>
+              <label>
+                密码
+                <input v-model="authForm.password" autocomplete="current-password" type="password" />
+              </label>
+              <button type="submit" :disabled="loading">
+                {{ mode === 'login' ? '登录' : '注册' }}
+              </button>
+            </form>
+          </template>
+
+          <template v-else>
+            <div class="account-summary">
+              <div class="account-avatar">{{ accountInitial }}</div>
+              <div>
+                <h3>{{ user.username }}</h3>
+                <p>{{ user.role === 'admin' ? '管理员账号' : '普通用户账号' }}</p>
+              </div>
+            </div>
+
+            <div class="account-stats">
+              <div>
+                <strong>{{ favoriteSongs.length }}</strong>
+                <span>收藏</span>
+              </div>
+              <div>
+                <strong>{{ uploadedSongs.length }}</strong>
+                <span>上传</span>
+              </div>
+              <div>
+                <strong>{{ songs.length }}</strong>
+                <span>歌曲</span>
+              </div>
+            </div>
+
+            <div class="account-actions">
+              <button type="button" @click="activeTab = 'upload'">＋ 上传歌曲</button>
+              <button class="secondary" type="button" @click="activeTab = 'uploads'">查看我的上传</button>
+              <button class="secondary" type="button" @click="logout">退出登录</button>
+            </div>
+          </template>
+        </section>
       </section>
-
-      <aside class="auth-card">
-        <template v-if="!isLoggedIn">
-          <h2>账户</h2>
-          <p>登录后可以上传、收藏和管理自己的歌曲。</p>
-          <div class="mode-switch">
-            <button :class="{ active: mode === 'login' }" type="button" @click="mode = 'login'">
-              ⎋ 登录
-            </button>
-            <button :class="{ active: mode === 'register' }" type="button" @click="mode = 'register'">
-              ＋ 注册
-            </button>
-          </div>
-
-          <form class="form" @submit.prevent="submitAuth">
-            <label>
-              用户名
-              <input v-model.trim="authForm.username" autocomplete="username" />
-            </label>
-            <label>
-              密码
-              <input v-model="authForm.password" autocomplete="current-password" type="password" />
-            </label>
-            <button type="submit" :disabled="loading">
-              {{ mode === 'login' ? '登录' : '注册' }}
-            </button>
-          </form>
-        </template>
-
-        <template v-else>
-          <h2>{{ user.username }}</h2>
-          <p>{{ user.role === 'admin' ? '管理员账号' : '普通用户账号' }}</p>
-          <div class="side-stats">
-            <span>收藏 {{ favoriteSongs.length }}</span>
-            <span>上传 {{ uploadedSongs.length }}</span>
-            <span>歌曲 {{ songs.length }}</span>
-          </div>
-          <button type="button" @click="activeTab = 'upload'">＋ 上传歌曲</button>
-        </template>
-      </aside>
     </main>
 
     <div v-if="selectedSong" class="modal-backdrop" @click.self="closeSongDetail">
