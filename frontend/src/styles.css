@@ -1,0 +1,325 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #f5f7fb;
+  color: #1f2937;
+  font-family: Arial, "Microsoft YaHei", sans-serif;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  border: 0;
+  border-radius: 6px;
+  background: #2563eb;
+  color: #fff;
+  cursor: pointer;
+  padding: 10px 14px;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+button.secondary {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+input {
+  width: 100%;
+  border: 1px solid #d7dde8;
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.app-shell {
+  min-height: 100vh;
+  padding-bottom: 90px;
+}
+
+.topbar {
+  align-items: center;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  display: grid;
+  gap: 20px;
+  grid-template-columns: 240px 1fr auto;
+  padding: 18px 32px;
+}
+
+.topbar h1 {
+  font-size: 24px;
+  margin: 0 0 4px;
+}
+
+.topbar p,
+.auth-card p {
+  color: #64748b;
+  margin: 0;
+}
+
+.nav-tabs,
+.mode-switch,
+.user-panel,
+.song-actions,
+.filters {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.nav-tabs button,
+.mode-switch button {
+  background: #eef2f7;
+  color: #334155;
+}
+
+.nav-tabs button.active,
+.mode-switch button.active {
+  background: #2563eb;
+  color: #fff;
+}
+
+.user-panel span {
+  color: #334155;
+  font-weight: 700;
+}
+
+.user-panel button,
+.song-actions button:nth-child(2) {
+  background: #0f766e;
+}
+
+button.danger {
+  background: #dc2626;
+}
+
+.main-grid {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  margin: 24px auto;
+  max-width: 1180px;
+  padding: 0 24px;
+}
+
+.content,
+.auth-card {
+  min-width: 0;
+}
+
+.section,
+.auth-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 22px;
+}
+
+.section-head {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.section h2,
+.auth-card h2 {
+  font-size: 20px;
+  margin: 0;
+}
+
+.narrow {
+  max-width: 620px;
+}
+
+.notice {
+  background: #ecfeff;
+  border: 1px solid #a5f3fc;
+  border-radius: 6px;
+  color: #155e75;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+}
+
+.stats {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 18px;
+}
+
+.stats div {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.stats strong {
+  display: block;
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+.stats span,
+.side-stats span,
+.now-playing span {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.song-list {
+  display: grid;
+  gap: 12px;
+}
+
+.song-item {
+  align-items: center;
+  background: #fbfdff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+  padding: 12px;
+}
+
+.song-item.playing {
+  background: #eff6ff;
+  border-color: #93c5fd;
+}
+
+.cover {
+  aspect-ratio: 1;
+  background: #e2e8f0;
+  border-radius: 6px;
+  object-fit: cover;
+  width: 72px;
+}
+
+.song-info {
+  min-width: 0;
+}
+
+.song-info h3 {
+  font-size: 17px;
+  margin: 0 0 5px;
+  overflow-wrap: anywhere;
+}
+
+.song-info p,
+.song-info span {
+  color: #64748b;
+  display: block;
+  margin: 0;
+}
+
+.song-info span {
+  font-size: 13px;
+  margin-top: 5px;
+}
+
+.form {
+  display: grid;
+  gap: 14px;
+}
+
+.form label {
+  color: #334155;
+  display: grid;
+  font-weight: 700;
+  gap: 6px;
+}
+
+.side-stats {
+  display: flex;
+  gap: 8px;
+  margin: 14px 0;
+}
+
+.side-stats span {
+  background: #f1f5f9;
+  border-radius: 999px;
+  padding: 6px 10px;
+}
+
+.empty {
+  color: #64748b;
+  padding: 28px 0;
+  text-align: center;
+}
+
+.player {
+  align-items: center;
+  background: #fff;
+  border-top: 1px solid #e5e7eb;
+  bottom: 0;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(180px, 260px) minmax(0, 900px);
+  justify-content: center;
+  left: 0;
+  padding: 14px 24px;
+  position: fixed;
+  right: 0;
+}
+
+.player audio {
+  display: block;
+  max-width: 900px;
+  width: 100%;
+}
+
+.now-playing {
+  min-width: 0;
+}
+
+.now-playing strong,
+.now-playing span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .topbar,
+  .main-grid,
+  .section-head,
+  .song-item,
+  .stats,
+  .player {
+    grid-template-columns: 1fr;
+  }
+
+  .topbar {
+    align-items: start;
+    padding: 16px;
+  }
+
+  .main-grid {
+    padding: 0 16px;
+  }
+
+  .section-head,
+  .filters,
+  .song-actions,
+  .nav-tabs {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .player {
+    align-items: stretch;
+  }
+}
