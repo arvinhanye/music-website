@@ -30,12 +30,22 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-  if (file.fieldname === 'music' && file.mimetype.startsWith('audio/')) {
+  const ext = path.extname(file.originalname).toLowerCase();
+  const audioExts = ['.mp3', '.wav', '.m4a', '.aac', '.ogg', '.flac'];
+  const imageExts = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'];
+
+  if (
+    file.fieldname === 'music' &&
+    (file.mimetype.startsWith('audio/') || audioExts.includes(ext))
+  ) {
     cb(null, true);
     return;
   }
 
-  if (file.fieldname === 'cover' && file.mimetype.startsWith('image/')) {
+  if (
+    file.fieldname === 'cover' &&
+    (file.mimetype.startsWith('image/') || imageExts.includes(ext))
+  ) {
     cb(null, true);
     return;
   }

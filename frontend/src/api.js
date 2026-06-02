@@ -10,10 +10,16 @@ const request = async (url, options = {}) => {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE}${url}`, {
-    ...options,
-    headers
-  });
+  let response;
+
+  try {
+    response = await fetch(`${API_BASE}${url}`, {
+      ...options,
+      headers
+    });
+  } catch (error) {
+    throw new Error('无法连接后端服务，请确认后端已启动');
+  }
 
   const data = await response.json().catch(() => ({}));
 
