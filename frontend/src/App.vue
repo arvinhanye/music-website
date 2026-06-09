@@ -1,12 +1,20 @@
 <script setup>
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { api } from './api';
+import AppIcon from './components/AppIcon.vue';
+import AppSidebar from './components/AppSidebar.vue';
+import MusicPlayer from './components/MusicPlayer.vue';
+import SongList from './components/SongList.vue';
+import SongModal from './components/SongModal.vue';
+import UploadForm from './components/UploadForm.vue';
+
+let messageTimer;
 
 const tabs = [
-  { key: 'songs', label: '资料库', icon: '⌘' },
-  { key: 'upload', label: '上传歌曲', icon: '＋', auth: true },
-  { key: 'uploads', label: '我的上传', icon: '↑', auth: true },
-  { key: 'favorites', label: '我的收藏', icon: '♡', auth: true }
+  { key: 'songs', label: '资料库', icon: 'library' },
+  { key: 'upload', label: '上传歌曲', icon: 'plus', auth: true },
+  { key: 'uploads', label: '我的上传', icon: 'upload', auth: true },
+  { key: 'favorites', label: '我的收藏', icon: 'heart', auth: true }
 ];
 
 const categories = ['全部', '流行', '民谣', '摇滚', '电子', '其他'];
@@ -15,17 +23,19 @@ const activeTab = ref('songs');
 const mode = ref('login');
 const message = ref('');
 const loading = ref(false);
+const hasLoadedSongs = ref(false);
 const user = ref(JSON.parse(localStorage.getItem('music_user') || 'null'));
 const token = ref(localStorage.getItem('music_token') || '');
 const songs = ref([]);
 const favorites = ref([]);
 const favoriteMap = reactive({});
 const playingSongId = ref('');
+const isPlaying = ref(false);
+const pendingFavoriteId = ref('');
+const pendingDeleteId = ref('');
 const selectedSong = ref(null);
-const coverPreviewUrl = ref('');
-const audioRef = ref(null);
-const musicInputRef = ref(null);
-const coverInputRef = ref(null);
+const playerRef = ref(null);
+const uploadFormRef = ref(null);
 
 const authForm = reactive({
   username: '',
@@ -35,16 +45,6 @@ const authForm = reactive({
 const filters = reactive({
   keyword: '',
   category: ''
-});
-
-const uploadForm = reactive({
-  title: '',
-  singer: '',
-  album: '',
-  category: '',
-  duration: '',
-  music: null,
-  cover: null
 });
 
 const isLoggedIn = computed(() => Boolean(token.value && user.value));
@@ -74,7 +74,7 @@ const uploadedSongs = computed(() =>
 
 const featuredSong = computed(() => currentSong.value || songs.value[0] || null);
 
-const previewSongs = computed(() => songs.value.slice(0, 5));
+const previewSongs = computed(() => songs.value.slice(0, 4));
 
 const totalPlayCount = computed(() =>
   songs.value.reduce((sum, song) => sum + (Number(song.playCount) || 0), 0)
@@ -94,18 +94,6 @@ const currentSongIndex = computed(() =>
   currentQueue.value.findIndex((song) => song._id === playingSongId.value)
 );
 
-const uploadReady = computed(() =>
-  Boolean(uploadForm.title && uploadForm.singer && uploadForm.music)
-);
-
-const uploadPreviewTitle = computed(() => uploadForm.title || '新歌曲标题');
-
-const uploadPreviewSinger = computed(() => uploadForm.singer || '待填写歌手');
-
-const uploadPreviewAlbum = computed(() => uploadForm.album || '未命名专辑');
-
-const uploadPreviewCategory = computed(() => uploadForm.category || '其他');
-
 const canDeleteSong = (song) => {
   if (!isLoggedIn.value || !song.uploaderId) {
     return false;
@@ -114,12 +102,15 @@ const canDeleteSong = (song) => {
   return user.value.role === 'admin' || isSongUploader(song);
 };
 
-const getFavoriteIcon = (song) => (favoriteMap[song._id] ? '♥' : '♡');
-
 const getFavoriteLabel = (song) => (favoriteMap[song._id] ? '取消收藏' : '收藏');
 
 const showMessage = (text) => {
   message.value = text;
+
+  window.clearTimeout(messageTimer);
+  messageTimer = window.setTimeout(() => {
+    message.value = '';
+  }, 3000);
 };
 
 const saveAuth = (data) => {
@@ -174,14 +165,11 @@ const loadSongs = async () => {
   try {
     const data = await api.getSongs(filters);
     songs.value = data.songs || [];
-
-    if (isLoggedIn.value) {
-      await loadFavoriteStatuses();
-    }
   } catch (error) {
     showMessage(error.message);
   } finally {
     loading.value = false;
+    hasLoadedSongs.value = true;
   }
 };
 
@@ -196,29 +184,23 @@ const selectCategory = async (category) => {
   await loadSongs();
 };
 
-const loadFavoriteStatuses = async () => {
-  await Promise.all(
-    songs.value.map(async (song) => {
-      try {
-        const data = await api.getFavoriteStatus(song._id);
-        favoriteMap[song._id] = data.isFavorite;
-      } catch (error) {
-        favoriteMap[song._id] = false;
-      }
-    })
-  );
-};
-
-const loadFavorites = async () => {
+const loadFavorites = async (showLoading = true) => {
   if (!isLoggedIn.value) {
     return;
   }
 
-  loading.value = true;
+  if (showLoading) {
+    loading.value = true;
+  }
 
   try {
     const data = await api.getFavorites();
     favorites.value = data.favorites || [];
+
+    Object.keys(favoriteMap).forEach((key) => {
+      delete favoriteMap[key];
+    });
+
     favorites.value.forEach((favorite) => {
       if (favorite.songId && favorite.songId._id) {
         favoriteMap[favorite.songId._id] = true;
@@ -227,7 +209,9 @@ const loadFavorites = async () => {
   } catch (error) {
     showMessage(error.message);
   } finally {
-    loading.value = false;
+    if (showLoading) {
+      loading.value = false;
+    }
   }
 };
 
@@ -236,6 +220,8 @@ const toggleFavorite = async (song) => {
     showMessage('请先登录');
     return;
   }
+
+  pendingFavoriteId.value = song._id;
 
   try {
     if (favoriteMap[song._id]) {
@@ -248,25 +234,37 @@ const toggleFavorite = async (song) => {
       showMessage(data.message);
     }
 
-    await loadFavorites();
+    await loadFavorites(false);
   } catch (error) {
     showMessage(error.message);
+  } finally {
+    pendingFavoriteId.value = '';
   }
 };
 
 const playSong = async (song) => {
-  playingSongId.value = song._id;
-
-  if (audioRef.value) {
-    audioRef.value.src = song.musicUrl;
-    await audioRef.value.play();
+  if (!playerRef.value) {
+    return;
   }
 
+  const isNewSong = playingSongId.value !== song._id;
+
   try {
+    if (isNewSong) {
+      playingSongId.value = song._id;
+    }
+
+    await playerRef.value.playSong(song, isNewSong);
+
+    if (!isNewSong) {
+      return;
+    }
+
     const data = await api.increasePlayCount(song._id);
     song.playCount = data.playCount;
   } catch (error) {
-    showMessage(error.message);
+    isPlaying.value = false;
+    showMessage('音频播放失败，请重试');
   }
 };
 
@@ -303,6 +301,12 @@ const closeSongDetail = () => {
   selectedSong.value = null;
 };
 
+const handleGlobalKeydown = (event) => {
+  if (event.key === 'Escape' && selectedSong.value) {
+    closeSongDetail();
+  }
+};
+
 const deleteSong = async (song) => {
   if (!canDeleteSong(song)) {
     showMessage('没有权限删除这首歌曲');
@@ -316,15 +320,16 @@ const deleteSong = async (song) => {
   }
 
   loading.value = true;
+  pendingDeleteId.value = song._id;
 
   try {
     const data = await api.deleteSong(song._id);
     showMessage(data.message);
 
-    if (playingSongId.value === song._id && audioRef.value) {
-      audioRef.value.pause();
-      audioRef.value.removeAttribute('src');
+    if (playingSongId.value === song._id && playerRef.value) {
+      playerRef.value.reset();
       playingSongId.value = '';
+      isPlaying.value = false;
     }
 
     if (selectedSong.value && selectedSong.value._id === song._id) {
@@ -333,102 +338,22 @@ const deleteSong = async (song) => {
 
     delete favoriteMap[song._id];
     await loadSongs();
-    await loadFavorites();
+    await loadFavorites(false);
   } catch (error) {
     showMessage(error.message);
   } finally {
     loading.value = false;
+    pendingDeleteId.value = '';
   }
 };
 
-const handleMusicFile = (event) => {
-  uploadForm.music = event.target.files[0] || null;
-};
-
-const handleCoverFile = (event) => {
-  uploadForm.cover = event.target.files[0] || null;
-
-  if (coverPreviewUrl.value) {
-    URL.revokeObjectURL(coverPreviewUrl.value);
-    coverPreviewUrl.value = '';
-  }
-
-  if (uploadForm.cover) {
-    coverPreviewUrl.value = URL.createObjectURL(uploadForm.cover);
-  }
-};
-
-const clearUploadForm = () => {
-  Object.assign(uploadForm, {
-    title: '',
-    singer: '',
-    album: '',
-    category: '',
-    duration: '',
-    music: null,
-    cover: null
-  });
-
-  if (coverPreviewUrl.value) {
-    URL.revokeObjectURL(coverPreviewUrl.value);
-    coverPreviewUrl.value = '';
-  }
-
-  if (musicInputRef.value) {
-    musicInputRef.value.value = '';
-  }
-
-  if (coverInputRef.value) {
-    coverInputRef.value.value = '';
-  }
-};
-
-const submitUpload = async () => {
-  if (!uploadForm.title || !uploadForm.singer || !uploadForm.music) {
-    showMessage('请填写歌曲名称、歌手并选择音乐文件');
-    return;
-  }
-
-  const formData = new FormData();
-  formData.append('title', uploadForm.title);
-  formData.append('singer', uploadForm.singer);
-  formData.append('album', uploadForm.album);
-  formData.append('category', uploadForm.category);
-  formData.append('duration', uploadForm.duration);
-  formData.append('music', uploadForm.music);
-
-  if (uploadForm.cover) {
-    formData.append('cover', uploadForm.cover);
-  }
-
+const submitUpload = async (formData) => {
   loading.value = true;
 
   try {
     const data = await api.uploadSong(formData);
     showMessage(data.message);
-    Object.assign(uploadForm, {
-      title: '',
-      singer: '',
-      album: '',
-      category: '',
-      duration: '',
-      music: null,
-      cover: null
-    });
-
-    if (musicInputRef.value) {
-      musicInputRef.value.value = '';
-    }
-
-    if (coverInputRef.value) {
-      coverInputRef.value.value = '';
-    }
-
-    if (coverPreviewUrl.value) {
-      URL.revokeObjectURL(coverPreviewUrl.value);
-      coverPreviewUrl.value = '';
-    }
-
+    uploadFormRef.value?.reset();
     activeTab.value = 'songs';
     await loadSongs();
   } catch (error) {
@@ -461,6 +386,7 @@ const openAccount = () => {
 };
 
 onMounted(async () => {
+  window.addEventListener('keydown', handleGlobalKeydown);
   await loadSongs();
 
   if (isLoggedIn.value) {
@@ -469,46 +395,49 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-  if (coverPreviewUrl.value) {
-    URL.revokeObjectURL(coverPreviewUrl.value);
-  }
+  window.clearTimeout(messageTimer);
+  window.removeEventListener('keydown', handleGlobalKeydown);
+  document.body.style.overflow = '';
+});
+
+watch(selectedSong, (song) => {
+  document.body.style.overflow = song ? 'hidden' : '';
 });
 </script>
 
 <template>
   <div class="app-shell">
-    <header class="topbar">
-      <div class="brand">
-        <div class="app-mark">♪</div>
-        <div>
-          <h1>Music Lab</h1>
-          <p>课程实验资料库</p>
-        </div>
-      </div>
-
-      <nav class="nav-tabs">
-        <button
-          v-for="tab in tabs"
-          :key="tab.key"
-          :class="{ active: activeTab === tab.key }"
-          type="button"
-          @click="switchTab(tab)"
-        >
-          <span>{{ tab.icon }}</span>
-          {{ tab.label }}
-        </button>
-      </nav>
-    </header>
-
-    <button class="account-trigger" type="button" title="账户" @click="openAccount">
-      <span>{{ isLoggedIn ? accountInitial : '⌾' }}</span>
-    </button>
+    <AppSidebar
+      :tabs="tabs"
+      :active-tab="activeTab"
+      :is-logged-in="isLoggedIn"
+      :account-initial="accountInitial"
+      @select-tab="switchTab"
+      @open-account="openAccount"
+    />
 
     <main class="main-grid">
       <section class="content">
-        <div v-if="message" class="notice">{{ message }}</div>
+        <Transition name="toast">
+          <div v-if="message" class="notice" role="status">{{ message }}</div>
+        </Transition>
 
-        <section v-if="activeTab === 'songs'" class="section">
+        <TransitionGroup name="page" tag="div" class="page-stack">
+        <section v-if="activeTab === 'songs'" key="songs" class="section">
+          <div v-if="!hasLoadedSongs" class="library-skeleton" aria-label="正在加载歌曲">
+            <div class="skeleton-block skeleton-hero"></div>
+            <div class="skeleton-stats">
+              <span v-for="item in 3" :key="item" class="skeleton-block"></span>
+            </div>
+            <div class="skeleton-cards">
+              <span v-for="item in 4" :key="item" class="skeleton-block"></span>
+            </div>
+            <div class="skeleton-list">
+              <span v-for="item in 4" :key="item" class="skeleton-block"></span>
+            </div>
+          </div>
+
+          <template v-else>
           <div class="library-hero">
             <div class="hero-copy">
               <span class="eyebrow">资料库精选</span>
@@ -518,10 +447,12 @@ onUnmounted(() => {
               </p>
               <div class="hero-actions">
                 <button v-if="featuredSong" type="button" :disabled="loading" @click="playSong(featuredSong)">
-                  ▶ 播放精选
+                  <AppIcon name="play" :size="17" filled />
+                  播放精选
                 </button>
                 <button class="secondary" type="button" @click="activeTab = isLoggedIn ? 'upload' : 'account'">
-                  {{ isLoggedIn ? '＋ 上传歌曲' : '登录后上传' }}
+                  <AppIcon :name="isLoggedIn ? 'plus' : 'user'" :size="17" />
+                  {{ isLoggedIn ? '上传歌曲' : '登录后上传' }}
                 </button>
               </div>
             </div>
@@ -547,22 +478,41 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <div v-if="previewSongs.length" class="preview-row">
-            <article v-for="song in previewSongs" :key="song._id" class="preview-card" @click="openSongDetail(song)">
-              <img :src="song.coverUrl || '/default-cover.svg'" alt="" />
-              <strong>{{ song.title }}</strong>
-              <span>{{ song.singer }}</span>
-            </article>
+          <div v-if="previewSongs.length" class="recent-section">
+            <div class="mini-section-head">
+              <div>
+                <span class="eyebrow">资料库更新</span>
+                <h2>最近加入</h2>
+              </div>
+              <span>最新 {{ previewSongs.length }} 首歌曲</span>
+            </div>
+            <div class="preview-row">
+              <article
+                v-for="song in previewSongs"
+                :key="song._id"
+                class="preview-card"
+                role="button"
+                tabindex="0"
+                @click="openSongDetail(song)"
+                @keydown.enter="openSongDetail(song)"
+              >
+                <img :src="song.coverUrl || '/default-cover.svg'" alt="" />
+                <strong>{{ song.title }}</strong>
+                <span>{{ song.singer }}</span>
+              </article>
+            </div>
           </div>
 
           <div class="section-head">
-            <h2>歌曲列表</h2>
+            <div>
+              <h2>全部歌曲</h2>
+              <p class="section-subtitle">按名称、歌手或专辑快速查找</p>
+            </div>
             <form class="filters" @submit.prevent="loadSongs">
               <input v-model.trim="filters.keyword" placeholder="搜索歌曲、歌手、专辑" />
-              <input v-model.trim="filters.category" placeholder="分类" />
               <button type="submit" :disabled="loading">搜索</button>
               <button class="secondary icon-button" type="button" title="重置" :disabled="loading" @click="resetFilters">
-                ↺
+                <AppIcon name="reset" :size="18" />
               </button>
             </form>
           </div>
@@ -580,163 +530,38 @@ onUnmounted(() => {
             </button>
           </div>
 
-          <div v-if="songs.length" class="song-list">
-            <article
-              v-for="song in songs"
-              :key="song._id"
-              class="song-item"
-              :class="{ playing: playingSongId === song._id }"
-            >
-              <img
-                class="cover"
-                :src="song.coverUrl || '/default-cover.svg'"
-                alt=""
-              />
-              <div class="song-info">
-                <button class="song-title" type="button" @click="openSongDetail(song)">
-                  {{ song.title }}
-                </button>
-                <p>{{ song.singer }} · {{ song.album || '未知专辑' }}</p>
-                <span>
-                  {{ song.category || '其他' }} · 播放 {{ song.playCount || 0 }} 次
-                  <template v-if="song.uploaderId && song.uploaderId.username">
-                    · 上传者 {{ song.uploaderId.username }}
-                  </template>
-                </span>
-              </div>
-              <div class="song-actions">
-                <button class="icon-button" type="button" :title="playingSongId === song._id ? '播放中' : '播放'" :disabled="loading" @click="playSong(song)">
-                  {{ playingSongId === song._id ? '●' : '▶' }}
-                </button>
-                <button class="icon-button favorite" type="button" :title="getFavoriteLabel(song)" :disabled="loading" @click="toggleFavorite(song)">
-                  {{ getFavoriteIcon(song) }}
-                </button>
-                <button
-                  v-if="canDeleteSong(song)"
-                  class="icon-button danger"
-                  type="button"
-                  title="删除"
-                  :disabled="loading"
-                  @click="deleteSong(song)"
-                >
-                  ×
-                </button>
-              </div>
-            </article>
-          </div>
+          <SongList
+            v-if="songs.length"
+            :songs="songs"
+            :playing-song-id="playingSongId"
+            :is-playing="isPlaying"
+            :favorite-map="favoriteMap"
+            :loading="loading"
+            :pending-favorite-id="pendingFavoriteId"
+            :pending-delete-id="pendingDeleteId"
+            :can-delete="canDeleteSong"
+            show-uploader
+            @play="playSong"
+            @favorite="toggleFavorite"
+            @delete="deleteSong"
+            @detail="openSongDetail"
+          />
 
           <div v-else class="empty">暂无歌曲</div>
+          </template>
         </section>
 
-        <section v-if="activeTab === 'upload'" class="section upload-page">
-          <div class="upload-hero">
-            <div>
-              <span class="eyebrow">上传工作台</span>
-              <h2>发布一首新歌曲</h2>
-              <p>填写歌曲信息，选择音频和封面。MongoDB 只保存文件路径，音频文件会放在 uploads 目录。</p>
-            </div>
-            <div class="upload-readiness" :class="{ ready: uploadReady }">
-              <strong>{{ uploadReady ? '准备就绪' : '待补全' }}</strong>
-              <span>{{ uploadReady ? '可以提交上传' : '需要歌曲名、歌手和音乐文件' }}</span>
-            </div>
-          </div>
+        <UploadForm
+          v-if="activeTab === 'upload'"
+          ref="uploadFormRef"
+          key="upload"
+          :categories="categories"
+          :loading="loading"
+          @submit="submitUpload"
+          @invalid="showMessage('请填写歌曲名称、歌手并选择音乐文件')"
+        />
 
-          <form class="upload-workbench" @submit.prevent="submitUpload">
-            <div class="upload-fields">
-              <div class="field-grid">
-                <label>
-                  歌曲名称
-                  <input v-model.trim="uploadForm.title" placeholder="例如 Neon Morning" />
-                </label>
-                <label>
-                  歌手
-                  <input v-model.trim="uploadForm.singer" placeholder="例如 Demo Studio" />
-                </label>
-                <label>
-                  专辑
-                  <input v-model.trim="uploadForm.album" placeholder="例如 Dark Library" />
-                </label>
-                <label>
-                  时长（秒）
-                  <input v-model.trim="uploadForm.duration" type="number" min="0" placeholder="180" />
-                </label>
-              </div>
-
-              <label>
-                分类
-                <input v-model.trim="uploadForm.category" placeholder="输入或选择分类" />
-              </label>
-
-              <div class="category-bar upload-categories">
-                <button
-                  v-for="category in categories.slice(1)"
-                  :key="category"
-                  type="button"
-                  :class="{ active: uploadForm.category === category }"
-                  @click="uploadForm.category = category"
-                >
-                  {{ category }}
-                </button>
-              </div>
-
-              <div class="upload-files">
-                <label class="file-drop">
-                  <span class="file-icon">♫</span>
-                  <strong>音乐文件</strong>
-                  <small>{{ uploadForm.music ? uploadForm.music.name : '选择音频文件' }}</small>
-                  <input ref="musicInputRef" accept="audio/*" type="file" @change="handleMusicFile" />
-                </label>
-                <label class="file-drop">
-                  <span class="file-icon">▧</span>
-                  <strong>封面图片</strong>
-                  <small>{{ uploadForm.cover ? uploadForm.cover.name : '选择封面图片，可选' }}</small>
-                  <input ref="coverInputRef" accept="image/*" type="file" @change="handleCoverFile" />
-                </label>
-              </div>
-
-              <div class="upload-actions">
-                <button type="submit" :disabled="loading || !uploadReady">
-                  {{ loading ? '上传中...' : '＋ 提交上传' }}
-                </button>
-                <button class="secondary" type="button" :disabled="loading" @click="clearUploadForm">
-                  清空
-                </button>
-              </div>
-            </div>
-
-            <aside class="upload-preview">
-              <div class="preview-cover large">
-                <img v-if="coverPreviewUrl" :src="coverPreviewUrl" alt="" />
-                <span v-else>♪</span>
-              </div>
-              <div class="preview-meta">
-                <h3>{{ uploadPreviewTitle }}</h3>
-                <p>{{ uploadPreviewSinger }} · {{ uploadPreviewAlbum }}</p>
-                <span>{{ uploadPreviewCategory }}</span>
-              </div>
-              <div class="upload-checklist">
-                <div :class="{ done: uploadForm.title }">
-                  <span>{{ uploadForm.title ? '✓' : '○' }}</span>
-                  歌曲名称
-                </div>
-                <div :class="{ done: uploadForm.singer }">
-                  <span>{{ uploadForm.singer ? '✓' : '○' }}</span>
-                  歌手
-                </div>
-                <div :class="{ done: uploadForm.music }">
-                  <span>{{ uploadForm.music ? '✓' : '○' }}</span>
-                  音乐文件
-                </div>
-                <div :class="{ done: uploadForm.cover }">
-                  <span>{{ uploadForm.cover ? '✓' : '○' }}</span>
-                  封面图片
-                </div>
-              </div>
-            </aside>
-          </form>
-        </section>
-
-        <section v-if="activeTab === 'uploads'" class="section">
+        <section v-if="activeTab === 'uploads'" key="uploads" class="section">
           <div class="section-head">
             <div>
               <h2>我的上传</h2>
@@ -745,37 +570,31 @@ onUnmounted(() => {
             <button type="button" @click="activeTab = 'upload'">继续上传</button>
           </div>
 
-          <div v-if="uploadedSongs.length" class="song-list">
-            <article
-              v-for="song in uploadedSongs"
-              :key="song._id"
-              class="song-item"
-              :class="{ playing: playingSongId === song._id }"
-            >
-              <img class="cover" :src="song.coverUrl || '/default-cover.svg'" alt="" />
-              <div class="song-info">
-                <button class="song-title" type="button" @click="openSongDetail(song)">
-                  {{ song.title }}
-                </button>
-                <p>{{ song.singer }} · {{ song.album || '未知专辑' }}</p>
-                <span>{{ song.category || '其他' }} · 播放 {{ song.playCount || 0 }} 次</span>
-              </div>
-              <div class="song-actions">
-                <button class="icon-button" type="button" title="播放" :disabled="loading" @click="playSong(song)">▶</button>
-                <button class="icon-button favorite" type="button" :title="getFavoriteLabel(song)" :disabled="loading" @click="toggleFavorite(song)">
-                  {{ getFavoriteIcon(song) }}
-                </button>
-                <button class="icon-button danger" type="button" title="删除" :disabled="loading" @click="deleteSong(song)">
-                  ×
-                </button>
-              </div>
-            </article>
-          </div>
+          <SongList
+            v-if="uploadedSongs.length"
+            :songs="uploadedSongs"
+            :playing-song-id="playingSongId"
+            :is-playing="isPlaying"
+            :favorite-map="favoriteMap"
+            :loading="loading"
+            :pending-favorite-id="pendingFavoriteId"
+            :pending-delete-id="pendingDeleteId"
+            :can-delete="canDeleteSong"
+            @play="playSong"
+            @favorite="toggleFavorite"
+            @delete="deleteSong"
+            @detail="openSongDetail"
+          />
 
-          <div v-else class="empty">还没有上传歌曲</div>
+          <div v-else class="empty-state">
+            <span class="empty-icon"><AppIcon name="upload" :size="28" /></span>
+            <h3>还没有上传歌曲</h3>
+            <p>上传一首测试音乐，就可以在这里进行管理。</p>
+            <button type="button" @click="activeTab = 'upload'">上传第一首歌曲</button>
+          </div>
         </section>
 
-        <section v-if="activeTab === 'favorites'" class="section">
+        <section v-if="activeTab === 'favorites'" key="favorites" class="section">
           <div class="section-head">
             <div>
               <h2>我的收藏</h2>
@@ -783,27 +602,30 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <div v-if="favoriteSongs.length" class="song-list">
-            <article v-for="song in favoriteSongs" :key="song._id" class="song-item">
-              <img class="cover" :src="song.coverUrl || '/default-cover.svg'" alt="" />
-              <div class="song-info">
-                <button class="song-title" type="button" @click="openSongDetail(song)">
-                  {{ song.title }}
-                </button>
-                <p>{{ song.singer }} · {{ song.album || '未知专辑' }}</p>
-                <span>{{ song.category || '其他' }} · 播放 {{ song.playCount || 0 }} 次</span>
-              </div>
-              <div class="song-actions">
-                <button class="icon-button" type="button" title="播放" :disabled="loading" @click="playSong(song)">▶</button>
-                <button class="icon-button favorite" type="button" title="取消收藏" :disabled="loading" @click="toggleFavorite(song)">♥</button>
-              </div>
-            </article>
-          </div>
+          <SongList
+            v-if="favoriteSongs.length"
+            :songs="favoriteSongs"
+            :playing-song-id="playingSongId"
+            :is-playing="isPlaying"
+            :favorite-map="favoriteMap"
+            :loading="loading"
+            :pending-favorite-id="pendingFavoriteId"
+            :can-delete="canDeleteSong"
+            @play="playSong"
+            @favorite="toggleFavorite"
+            @delete="deleteSong"
+            @detail="openSongDetail"
+          />
 
-          <div v-else class="empty">暂无收藏</div>
+          <div v-else class="empty-state">
+            <span class="empty-icon"><AppIcon name="heart" :size="28" /></span>
+            <h3>收藏列表还是空的</h3>
+            <p>在资料库点击爱心，喜欢的歌曲会保存在这里。</p>
+            <button type="button" @click="activeTab = 'songs'">浏览资料库</button>
+          </div>
         </section>
 
-        <section v-if="activeTab === 'account'" class="section account-page">
+        <section v-if="activeTab === 'account'" key="account" class="section account-page">
           <div class="section-head">
             <div>
               <h2>账户</h2>
@@ -812,28 +634,48 @@ onUnmounted(() => {
           </div>
 
           <template v-if="!isLoggedIn">
-            <div class="mode-switch">
-              <button :class="{ active: mode === 'login' }" type="button" @click="mode = 'login'">
-                ⎋ 登录
-              </button>
-              <button :class="{ active: mode === 'register' }" type="button" @click="mode = 'register'">
-                ＋ 注册
-              </button>
-            </div>
+            <div class="account-login-grid">
+              <div class="account-intro">
+                <span class="eyebrow">账户功能</span>
+                <h3>管理你的音乐资料库</h3>
+                <p>登录后可以上传歌曲、收藏音乐，并管理自己发布的内容。</p>
+                <div class="account-benefits">
+                  <span>✓ 保存个人收藏</span>
+                  <span>✓ 管理上传歌曲</span>
+                  <span>✓ 保留登录状态</span>
+                </div>
+              </div>
 
-            <form class="form account-form" @submit.prevent="submitAuth">
-              <label>
-                用户名
-                <input v-model.trim="authForm.username" autocomplete="username" />
-              </label>
-              <label>
-                密码
-                <input v-model="authForm.password" autocomplete="current-password" type="password" />
-              </label>
-              <button type="submit" :disabled="loading">
-                {{ mode === 'login' ? '登录' : '注册' }}
-              </button>
-            </form>
+              <div class="account-panel">
+                <div class="mode-switch">
+                  <button :class="{ active: mode === 'login' }" type="button" @click="mode = 'login'">
+                    登录
+                  </button>
+                  <button :class="{ active: mode === 'register' }" type="button" @click="mode = 'register'">
+                    注册
+                  </button>
+                </div>
+
+                <form class="form account-form" @submit.prevent="submitAuth">
+                  <label>
+                    用户名
+                    <input v-model.trim="authForm.username" autocomplete="username" placeholder="请输入用户名" />
+                  </label>
+                  <label>
+                    密码
+                    <input
+                      v-model="authForm.password"
+                      :autocomplete="mode === 'login' ? 'current-password' : 'new-password'"
+                      type="password"
+                      placeholder="请输入密码"
+                    />
+                  </label>
+                  <button type="submit" :disabled="loading">
+                    {{ loading ? '请稍候...' : mode === 'login' ? '登录账户' : '创建账户' }}
+                  </button>
+                </form>
+              </div>
+            </div>
           </template>
 
           <template v-else>
@@ -861,88 +703,43 @@ onUnmounted(() => {
             </div>
 
             <div class="account-actions">
-              <button type="button" @click="activeTab = 'upload'">＋ 上传歌曲</button>
+              <button type="button" @click="activeTab = 'upload'">
+                <AppIcon name="plus" :size="17" />
+                上传歌曲
+              </button>
               <button class="secondary" type="button" @click="activeTab = 'uploads'">查看我的上传</button>
               <button class="secondary" type="button" @click="logout">退出登录</button>
             </div>
           </template>
         </section>
+        </TransitionGroup>
       </section>
     </main>
 
-    <div v-if="selectedSong" class="modal-backdrop" @click.self="closeSongDetail">
-      <section class="modal">
-        <div class="modal-head">
-          <h2>歌曲详情</h2>
-          <button class="secondary icon-button" type="button" title="关闭" @click="closeSongDetail">×</button>
-        </div>
+    <Transition name="modal">
+      <SongModal
+        v-if="selectedSong"
+        :song="selectedSong"
+        :is-favorite="Boolean(favoriteMap[selectedSong._id])"
+        :can-delete="canDeleteSong(selectedSong)"
+        :pending-favorite="pendingFavoriteId === selectedSong._id"
+        :pending-delete="pendingDeleteId === selectedSong._id"
+        @close="closeSongDetail"
+        @play="playSong"
+        @favorite="toggleFavorite"
+        @delete="deleteSong"
+      />
+    </Transition>
 
-        <div class="detail-layout">
-          <img class="detail-cover" :src="selectedSong.coverUrl || '/default-cover.svg'" alt="" />
-          <div class="detail-info">
-            <h3>{{ selectedSong.title }}</h3>
-            <p>{{ selectedSong.singer }} · {{ selectedSong.album || '未知专辑' }}</p>
-            <dl>
-              <div>
-                <dt>分类</dt>
-                <dd>{{ selectedSong.category || '其他' }}</dd>
-              </div>
-              <div>
-                <dt>时长</dt>
-                <dd>{{ selectedSong.duration || 0 }} 秒</dd>
-              </div>
-              <div>
-                <dt>播放次数</dt>
-                <dd>{{ selectedSong.playCount || 0 }}</dd>
-              </div>
-              <div>
-                <dt>上传者</dt>
-                <dd>{{ selectedSong.uploaderId && selectedSong.uploaderId.username ? selectedSong.uploaderId.username : '未知' }}</dd>
-              </div>
-              <div>
-                <dt>音乐路径</dt>
-                <dd>{{ selectedSong.musicUrl }}</dd>
-              </div>
-              <div>
-                <dt>封面路径</dt>
-                <dd>{{ selectedSong.coverUrl || '未上传封面' }}</dd>
-              </div>
-            </dl>
-          </div>
-        </div>
-
-        <div class="modal-actions">
-          <button class="icon-button" type="button" title="播放" :disabled="loading" @click="playSong(selectedSong)">▶</button>
-          <button class="icon-button favorite" type="button" :title="getFavoriteLabel(selectedSong)" :disabled="loading" @click="toggleFavorite(selectedSong)">
-            {{ getFavoriteIcon(selectedSong) }}
-          </button>
-          <button
-            v-if="canDeleteSong(selectedSong)"
-            class="icon-button danger"
-            type="button"
-            title="删除"
-            :disabled="loading"
-            @click="deleteSong(selectedSong)"
-          >
-            ×
-          </button>
-        </div>
-      </section>
-    </div>
-
-    <footer class="player">
-      <div class="now-playing">
-        <img :src="currentSong && currentSong.coverUrl ? currentSong.coverUrl : '/default-cover.svg'" alt="" />
-        <div>
-          <strong>{{ currentSong ? currentSong.title : '未播放歌曲' }}</strong>
-          <span>{{ currentSong ? currentSong.singer : '请选择一首歌曲' }}</span>
-        </div>
-      </div>
-      <div class="player-controls">
-        <button class="secondary icon-button transport" type="button" title="上一首" :disabled="!currentQueue.length" @click="playPrevious">⏮</button>
-        <audio ref="audioRef" controls @ended="handleAudioEnded" />
-        <button class="secondary icon-button transport" type="button" title="下一首" :disabled="!currentQueue.length" @click="playNext">⏭</button>
-      </div>
-    </footer>
+    <MusicPlayer
+      ref="playerRef"
+      :current-song="currentSong"
+      :has-queue="Boolean(currentQueue.length)"
+      @previous="playPrevious"
+      @next="currentSong ? playNext() : playSong(currentQueue[0])"
+      @ended="handleAudioEnded"
+      @error="showMessage('音频播放失败，请重试')"
+      @state-change="isPlaying = $event"
+    />
   </div>
 </template>
