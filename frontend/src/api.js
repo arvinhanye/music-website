@@ -109,10 +109,6 @@ export const api = {
     return request('/api/favorites');
   },
 
-  getFavoriteStatus(songId) {
-    return request(`/api/favorites/${songId}/status`);
-  },
-
   addFavorite(songId) {
     return request(`/api/favorites/${songId}`, {
       method: 'POST'
